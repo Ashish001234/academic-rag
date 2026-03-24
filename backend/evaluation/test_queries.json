@@ -1,0 +1,42 @@
+[
+  {
+    "query": "transformer attention mechanism",
+    "relevant_ids": []
+  },
+  {
+    "query": "BERT pre-training natural language understanding",
+    "relevant_ids": []
+  },
+  {
+    "query": "generative adversarial networks image synthesis",
+    "relevant_ids": []
+  },
+  {
+    "query": "reinforcement learning policy gradient",
+    "relevant_ids": []
+  },
+  {
+    "query": "graph neural networks node classification",
+    "relevant_ids": []
+  },
+  {
+    "query": "object detection convolutional neural network",
+    "relevant_ids": []
+  },
+  {
+    "query": "knowledge distillation model compression",
+    "relevant_ids": []
+  },
+  {
+    "query": "federated learning privacy distributed",
+    "relevant_ids": []
+  },
+  {
+    "query": "contrastive learning self-supervised representation",
+    "relevant_ids": []
+  },
+  {
+    "query": "neural machine translation sequence to sequence",
+    "relevant_ids": []
+  }
+]

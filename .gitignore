@@ -1,0 +1,25 @@
+# Data (too large for git)
+data/
+*.pkl
+*.bin
+*.npy
+*.jsonl
+
+# Environment
+.env
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Kaggle
+~/.kaggle/
