@@ -1,3 +1,7 @@
+# Project internals
+CLAUDE.md
+.claude/
+
 # Data (too large for git)
 data/
 *.pkl
