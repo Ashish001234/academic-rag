@@ -5,7 +5,9 @@
 ---
 
 ## BEFORE YOU START
-- Server running at `http://localhost:8000` (start 5 min early — 25s cold start)
+- **Check `.env`:** `LLM_PROVIDER=groq` and `GROQ_API_KEY=<your_key>` must be set — Ask mode silently fails without it
+- Start server: `py -3.11 -m uvicorn backend.api:app` (start 5 min early — 25s cold start)
+- Server running at `http://localhost:8000`
 - Browser open on homepage, ready to go
 - Gamma slides open in a separate tab
 - Queries ready to paste:
@@ -89,7 +91,7 @@
 
 *Type query, hit Search. Wait for results.*
 
-> "These are the top results using our full Hybrid+Reranker pipeline. The number one result is Attention Is All You Need — exactly right. Each card shows the title, authors, year, category tags, abstract excerpt, and relevance score. You can click the PDF link to go straight to arXiv.
+> "These are the top results using our full Hybrid+Reranker pipeline. Every result on this page is genuinely about attention mechanisms in Transformers — the re-ranker has pulled out exactly the right papers. Each card shows the title, authors, year, category tags, abstract excerpt, and relevance score. You can click the PDF link to go straight to arXiv.
 >
 > Now — the key demo feature."
 
