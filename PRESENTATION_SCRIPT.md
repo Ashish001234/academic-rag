@@ -106,6 +106,10 @@
 
 > "And below the answer you have all the source papers, ranked and verifiable. You can check every claim the LLM made against the actual abstract. That's what makes this RAG — it's grounded, not hallucinated."
 
+*Hit Search again with the same question.*
+
+> "Notice something — the second time the same question is asked, the response comes back almost instantly. We built an in-memory caching layer into the backend — both search results and LLM-generated answers are cached. Search results are cached by query, method, and filters — up to 500 entries. Ask answers are cached by query — up to 200 entries. So during a live demo or repeated use, you're not burning API credits or re-running expensive retrieval on the same queries."
+
 ---
 
 ## [4:40 — 5:20] EVALUATION RESULTS
@@ -165,6 +169,6 @@
 | Search + results | 0:50 | 2:00 |
 | Method comparison | 1:10 | 3:10 |
 | Filters | 0:30 | 3:40 |
-| Ask mode + RAG | 1:00 | 4:40 |
+| Ask mode + RAG + Caching demo | 1:20 | 5:00 |
 | Evaluation results | 0:40 | 5:20 |
 | Wrap up | 0:30 | 5:50 |
