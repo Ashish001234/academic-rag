@@ -62,7 +62,7 @@
 
 **SCREEN: Click the Dense tab**
 
-> "Now **Dense retrieval** — this encodes your query into a 384-dimensional vector using a sentence transformer model, and finds papers with the most similar embeddings. It understands *meaning*, not just keywords. So 'attention mechanism' might surface papers that talk about 'self-attention' or 'query-key-value' even if they don't use the exact words.
+> "Now **Dense retrieval** — we're using a model called **all-MiniLM-L6-v2**, which is a lightweight sentence transformer from Microsoft. It encodes your query into a 384-dimensional vector and finds papers with the most similar embeddings using FAISS. The key difference from BM25 is that it understands *meaning*, not just keywords — so 'attention mechanism' might surface papers that talk about 'self-attention' or 'query-key-value' even if they don't use the exact words.
 >
 > But look — for this query, the dense results are actually weaker than BM25. When queries are precise technical terms, keyword matching still wins."
 
