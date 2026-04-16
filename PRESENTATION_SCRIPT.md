@@ -1,174 +1,184 @@
 # Presentation Script — ArXiv RAG Search Engine
-### CSCE 670 | 5–6 Minutes | Live Demo
+### CSCE 670 | Texas A&M University | 9 Minutes Total
+### Format: 5–6 min slides + 3–4 min live demo
 
 ---
 
 ## BEFORE YOU START
-- Server is running at `http://localhost:8000`
-- Browser is open on the homepage, fullscreen
-- Have these two queries ready to paste:
+- Server running at `http://localhost:8000` (start 5 min early — 25s cold start)
+- Browser open on homepage, ready to go
+- Gamma slides open in a separate tab
+- Queries ready to paste:
   - `transformer attention mechanism`
   - `What are recent techniques for reducing hallucination in LLMs?`
 
 ---
 
-## [0:00 — 0:40] INTRODUCTION
-**SCREEN: Homepage (hero section visible)**
+## ── SLIDES SECTION (5:30) ──────────────────────────────
 
-> "Hi everyone. So the problem we wanted to solve is pretty simple — when you're doing research, you don't just want a list of papers. You want answers. You want to know *what the field says* about your question, with sources you can actually verify.
+## [0:00 — 0:45] SLIDE 1: Motivation & System Overview
+
+> "Hi everyone. The problem we set out to solve — when you're doing research, you don't just want a list of papers. You want answers. You want to know what the field says about your question, with sources you can verify.
 >
-> What we built is a RAG-based academic search engine over **893,000 arXiv computer science papers**. It supports two modes — a traditional search mode where you get ranked paper results, and an Ask mode where you type a question and get a cited, LLM-generated answer from the top papers.
->
-> Let me walk you through it."
+> So we built a RAG-based academic search engine over 893,000 arXiv computer science papers. It has two modes — a Search mode that returns ranked paper results, and an Ask mode where you type a natural language question and get a cited, LLM-generated answer directly from the top papers. No hallucination — every claim is grounded in a real abstract."
 
 ---
 
-## [0:40 — 1:10] HOMEPAGE TOUR
-**SCREEN: Scroll slightly so stats bar is visible**
+## [0:45 — 1:30] SLIDE 2: Existing Systems & Limitations
 
-> "You can see at the bottom here — we're indexing **893,000 CS papers**, roughly 500,000 unique authors, across 40 CS subcategories. These numbers are live, pulled from our dataset at startup.
+> "Existing tools each solve part of the problem but not all of it.
 >
-> The two modes — Search and Ask — are right here. We'll start with Search."
-
-*Point to the SEARCH / ASK A QUESTION toggle.*
-
-> "And we have these quick filter chips for common topics — you can click any of these to instantly kick off a search."
+> Google Scholar gives you keyword search — fast, but no semantic understanding and no answers. Semantic Scholar has better ranking but still just returns a list of papers. And tools like ChatGPT will generate answers, but they hallucinate paper titles and citations — you can't verify anything it says.
+>
+> Our system sits at the intersection — real retrieval over verified papers, combined with an LLM that only answers from what it actually retrieved. You get the answer AND the sources."
 
 ---
 
-## [1:10 — 2:00] SEARCH — HYBRID+RERANKER
-**SCREEN: Type "transformer attention mechanism" into the search bar, hit Search**
+## [1:30 — 2:10] SLIDE 3: Data
 
-> "Let me search for something classic — transformer attention mechanism."
-
-*Wait for results to load.*
-
-> "So these are our top results using the full pipeline — Hybrid retrieval with cross-encoder re-ranking. You can see each card shows the title, authors, year, arXiv category tags, a snippet of the abstract, and the relevance score.
+> "Our dataset is the arXiv corpus from Cornell University, downloaded via Kaggle. The raw file is about 4 gigabytes — 2.97 million papers across all fields. We filtered down to computer science papers using the CS category tags, which gave us 892,992 papers.
 >
-> The very first result is 'Attention Is All You Need' — the 2017 paper that introduced the transformer. Exactly what you'd expect. You can click the PDF link on any card to go straight to arXiv."
-
-*Point to the PDF link and the relevance score.*
-
-> "Now here's the interesting part — the key demo feature of our system."
+> For each paper we use the title, abstract, authors, categories, and publication date. Because the file is so large, we process it line by line to avoid loading everything into memory at once. Papers are stored as JSONL — one JSON object per line — which lets the server stream through them efficiently at startup."
 
 ---
 
-## [2:00 — 3:10] METHOD COMPARISON — THE IR DEMO
-**SCREEN: Click the BM25 tab at the top of the results**
+## [2:10 — 3:30] SLIDE 4: Implementation — Retrieval Pipeline
 
-> "We have four retrieval methods you can switch between in real time. Right now I switched to **BM25** — this is pure keyword-based sparse retrieval. It's scoring papers based on how often the query terms appear, weighted by how rare those terms are across the whole corpus. Fast, classic, no neural networks involved.
+> "The core of the system is a four-stage retrieval pipeline.
 >
-> Notice the results changed — some papers moved up, some dropped out entirely."
-
-**SCREEN: Click the Dense tab**
-
-> "Now **Dense retrieval** — we're using a model called **all-MiniLM-L6-v2**, which is a lightweight sentence transformer from Microsoft. It encodes your query into a 384-dimensional vector and finds papers with the most similar embeddings using FAISS. The key difference from BM25 is that it understands *meaning*, not just keywords — so 'attention mechanism' might surface papers that talk about 'self-attention' or 'query-key-value' even if they don't use the exact words.
+> Stage one is BM25 — classic sparse keyword retrieval. It scores every paper based on how frequently the query terms appear, weighted by how rare those terms are across the whole corpus. Fast, no GPU needed, returns top 100 candidates.
 >
-> But look — for this query, the dense results are actually weaker than BM25. When queries are precise technical terms, keyword matching still wins."
-
-**SCREEN: Click the Hybrid tab**
-
-> "**Hybrid** combines both using Reciprocal Rank Fusion — a classic technique from the IR literature. A paper that ranks highly in *both* BM25 and dense gets a boosted score. Better recall, but still not perfect precision."
-
-**SCREEN: Click back to Hybrid+Reranker**
-
-> "And this is our full pipeline — **Hybrid plus cross-encoder re-ranking**. After fusing the two lists, we take the top 30 candidates and run them through a cross-encoder model that reads the query and each abstract *together* as a pair — much more accurate than comparing embeddings separately. This is what gets us to the right results at the top."
+> Stage two is dense retrieval. We use a model called all-MiniLM-L6-v2 — a lightweight sentence transformer from Microsoft — to encode the query into a 384-dimensional vector. We then search across 893,000 pre-computed paper embeddings using FAISS. This understands meaning, not just keywords — so a query about 'attention mechanism' can surface papers discussing 'self-attention' or 'query-key-value' even without exact word matches.
+>
+> Stage three is hybrid fusion using Reciprocal Rank Fusion — a technique from the IR literature. A paper that ranks highly in both BM25 and dense gets a boosted combined score.
+>
+> Stage four is cross-encoder re-ranking. We take the top 30 fused candidates and run them through ms-marco-MiniLM-L6-v2 — a cross-encoder that reads the query and each abstract together as a pair. This is much more accurate than comparing embeddings separately. It re-ranks those 30 and returns the best 10."
 
 ---
 
-## [3:10 — 3:40] SIDEBAR FILTERS
-**SCREEN: Interact with the sidebar — click a category filter like cs.CL**
+## [3:30 — 4:15] SLIDE 5: RAG & System Stack
 
-> "We also have sidebar filters — you can narrow by CS subcategory. So if I filter to cs.CL — computational linguistics — results are restricted to papers in that field.
+> "For answer generation, we use Meta's Llama 3.3 70B model, served via the Groq API — we chose Groq specifically for its low latency, answers come back in about 2 to 3 seconds.
 >
-> There's also a year range filter if you want recent work only."
-
-*Toggle the filter off to reset.*
+> The LLM is prompted to answer only from the retrieved abstracts and to cite papers by number — so every claim in the answer maps to a real paper the user can check.
+>
+> The backend is FastAPI with all models pre-loaded at startup, so there's no loading delay per request. We also built an in-memory caching layer — search results are cached up to 500 entries, ask answers up to 200. Repeated queries come back instantly without re-running retrieval or burning API credits.
+>
+> Search responses come back in under 2 seconds, Ask mode in about 5 seconds on the first query."
 
 ---
 
-## [3:40 — 4:40] ASK MODE — RAG
-**SCREEN: Click "ASK A QUESTION" toggle, type the second query**
+## [4:15 — 5:30] SLIDE 6: Evaluation Results
 
-> "Now the Ask mode. This is where RAG comes in."
-
-*Type: `What are recent techniques for reducing hallucination in LLMs?`*
-
-> "I'll type a natural language research question — something you'd actually want an answer to, not just a list of papers."
-
-*Hit Search. Wait for the answer to load — takes 3-5 seconds.*
-
-> "So what's happening under the hood — the system retrieves the top papers using our full hybrid+reranker pipeline, then sends those abstracts to an LLM — we're using Llama 3.3 70B on Groq — with a prompt instructing it to answer only from the provided papers and cite them by number.
+> "We evaluated the four retrieval methods using Precision at 5, nDCG at 10, and Mean Reciprocal Rank — standard IR metrics. Our test set has 10 queries with 10 relevant papers each, labeled using an LLM-as-judge approach via Groq.
 >
-> And here's the result — a coherent paragraph answering the question, with inline citations. [1], [2], these map directly to the source papers shown below."
+> BM25 gets a P@5 of 0.60 — solid baseline. Dense retrieval actually underperforms BM25 at 0.38 — for precise CS terminology, keyword matching is still strong. Hybrid improves things slightly. And Hybrid with re-ranking hits perfect scores across all three metrics.
+>
+> The cross-encoder re-ranking is clearly the decisive component — nDCG@10 jumps from 0.51 to 1.0.
+>
+> One honest caveat — our relevance labels were generated from our own pipeline's output, so the Hybrid+Reranker scores reflect system consistency. We acknowledge this in the report and frame it as a demonstration of re-ranker effectiveness rather than absolute ground truth."
 
-*Scroll down to show the source paper cards.*
+---
 
-> "And below the answer you have all the source papers, ranked and verifiable. You can check every claim the LLM made against the actual abstract. That's what makes this RAG — it's grounded, not hallucinated."
+## ── LIVE DEMO SECTION (3:30) ────────────────────────────
+
+## [5:30 — 6:10] DEMO: Search + Method Comparison
+**SCREEN: Switch to browser, homepage visible**
+
+> "Let me show it live. I'll search for 'transformer attention mechanism.'"
+
+*Type query, hit Search. Wait for results.*
+
+> "These are the top results using our full Hybrid+Reranker pipeline. The number one result is Attention Is All You Need — exactly right. Each card shows the title, authors, year, category tags, abstract excerpt, and relevance score. You can click the PDF link to go straight to arXiv.
+>
+> Now — the key demo feature."
+
+*Click BM25 tab.*
+
+> "Switching to BM25 only — pure keyword search. Notice the ranking changes."
+
+*Click Dense tab.*
+
+> "Dense only — semantic search with all-MiniLM-L6-v2. Different results again — it's finding papers about related concepts."
+
+*Click Hybrid+Reranker tab.*
+
+> "Back to the full pipeline — this is what gives us perfect precision in evaluation. Same query, four different rankings — you can see the IR concepts from this course in action."
+
+---
+
+## [6:10 — 7:20] DEMO: Ask Mode + Caching
+**SCREEN: Click "ASK A QUESTION" toggle**
+
+> "Now the Ask mode."
+
+*Type: `What are recent techniques for reducing hallucination in LLMs?` — hit Search.*
+
+> "This is a natural language research question. Under the hood, the system retrieves the top papers using the full pipeline, then sends those abstracts to Llama 3.3 70B on Groq with a prompt that says — answer only from these papers, cite them by number."
+
+*Wait for answer to load (~3-5 seconds).*
+
+> "And here's the result — a coherent cited answer with inline citations. [1], [2] — these map directly to the source papers shown below. Every claim is verifiable."
+
+*Scroll down briefly to show paper cards.*
+
+> "Now watch this —"
 
 *Hit Search again with the same question.*
 
-> "Notice something — the second time the same question is asked, the response comes back almost instantly. We built an in-memory caching layer into the backend — both search results and LLM-generated answers are cached. Search results are cached by query, method, and filters — up to 500 entries. Ask answers are cached by query — up to 200 entries. So during a live demo or repeated use, you're not burning API credits or re-running expensive retrieval on the same queries."
+> "Instant. That's our caching layer — same query returns from cache without re-running retrieval or hitting the API again. Critical for a live demo and for keeping API costs down."
 
 ---
 
-## [4:40 — 5:20] EVALUATION RESULTS
-**SCREEN: Switch to your evaluation results slide / share screen with results.md**
+## [7:20 — 8:00] DEMO: Filters
+**SCREEN: Back to Search mode with results visible**
 
-> "We evaluated the four retrieval methods on 10 test queries using Precision@5, nDCG@10, and MRR.
+*Search "graph neural networks" then use sidebar category filter.*
 
-| Method | P@5 | nDCG@10 | MRR |
-|--------|-----|---------|-----|
-| BM25 | 0.60 | 0.54 | 0.90 |
-| Dense | 0.38 | 0.31 | 0.52 |
-| Hybrid | 0.58 | 0.51 | 0.73 |
-| Hybrid+Reranker | **1.00** | **1.00** | **1.00** |
-
-> The cross-encoder re-ranker is clearly the decisive component — it takes nDCG@10 from 0.51 to 1.0. Dense retrieval alone actually underperforms BM25 on precise CS queries, which tells us that for this domain, keyword matching is still a strong baseline. Hybrid helps recall but needs re-ranking to push precision.
->
-> One honest caveat — our relevance labels were generated via LLM-as-judge on the same pipeline, so the Hybrid+Reranker scores reflect system consistency rather than an independent gold standard. We call this out in the report."
+> "We also have sidebar filters — narrow by CS subcategory or year range. So if I filter to cs.LG — machine learning — results restrict to that field only. Useful when you want papers from a specific area."
 
 ---
 
-## [5:20 — 5:50] WRAP UP
-**SCREEN: Back to homepage or results page**
+## [8:00 — 8:30] WRAP UP
+**SCREEN: Back to Gamma slide or results page**
 
-> "To summarize — we built a complete RAG search engine over 893K arXiv papers with four retrieval methods you can compare live, LLM-generated cited answers, and a custom dark-themed UI. The whole backend is FastAPI with in-memory caching, the indexes load once at startup, and search responses come back in under 2 seconds.
+> "To summarize — we built a complete RAG search engine over 893,000 arXiv papers. Four retrieval methods you can compare live. Cited LLM answers grounded in real abstracts. The re-ranker is the key component that takes retrieval from good to near-perfect.
 >
-> The professor's feedback was to show concrete query-answer examples and cite all tools properly — we've done both in the report.
->
-> Happy to take questions."
-
----
-
-## LIKELY QUESTIONS & ANSWERS
-
-**Q: Why did you use all-MiniLM-L6-v2 and not a larger model?**
-> "It encodes 893K abstracts in about an hour on a consumer GPU. A larger model would take 5+ hours and produce a much bigger index — for this scale, MiniLM gives a good quality-speed tradeoff."
-
-**Q: How long does it take to build the indexes?**
-> "BM25 takes about 10-15 minutes, FAISS dense encoding takes about an hour on GPU. But that's a one-time offline cost — at query time everything is pre-loaded and search is under 2 seconds."
-
-**Q: Why RRF and not learned fusion weights?**
-> "RRF requires no training data and has been shown to outperform many learned fusion methods in the literature. It's also parameter-free — the k=60 constant is the standard from the original Cormack et al. 2009 paper."
-
-**Q: What's the caveat with your evaluation?**
-> "Our relevance labels were generated by asking Groq to judge the top-10 results from our own hybrid_rerank pipeline. So the Hybrid+Reranker scores perfectly by construction. A stronger evaluation would use human annotators or an existing IR benchmark like BEIR. We acknowledge this in the report."
-
-**Q: Could this scale to all 2.97M arXiv papers?**
-> "The FAISS index scales linearly — 3M papers would be roughly a 4.5GB index, still manageable. BM25 would need more RAM. The bigger challenge would be encoding time — about 3-4 hours on GPU."
+> Everything is in our GitHub repo. Thank you."
 
 ---
 
 ## TIMING GUIDE
 
-| Section | Time | Cumulative |
-|---------|------|-----------|
-| Introduction | 0:40 | 0:40 |
-| Homepage tour | 0:30 | 1:10 |
-| Search + results | 0:50 | 2:00 |
-| Method comparison | 1:10 | 3:10 |
-| Filters | 0:30 | 3:40 |
-| Ask mode + RAG + Caching demo | 1:20 | 5:00 |
-| Evaluation results | 0:40 | 5:20 |
-| Wrap up | 0:30 | 5:50 |
+| Section | Duration | Cumulative |
+|---------|----------|-----------|
+| Motivation & Overview | 0:45 | 0:45 |
+| Existing Systems | 0:45 | 1:30 |
+| Data | 0:40 | 2:10 |
+| Retrieval Pipeline | 1:20 | 3:30 |
+| RAG & Stack | 0:45 | 4:15 |
+| Evaluation Results | 1:15 | 5:30 |
+| Demo: Search + Methods | 0:40 | 6:10 |
+| Demo: Ask + Caching | 1:10 | 7:20 |
+| Demo: Filters | 0:40 | 8:00 |
+| Wrap up | 0:30 | 8:30 |
+| **Buffer** | **0:30** | **9:00** |
+
+---
+
+## LIKELY Q&A
+
+**Q: Why did dense retrieval underperform BM25?**
+> "For precise CS terminology like 'graph neural networks node classification', exact keyword matching is very strong. Dense retrieval shines more on abstract or conceptual queries."
+
+**Q: Why all-MiniLM-L6-v2 and not a larger model?**
+> "It encodes 893K abstracts in about an hour on a consumer GPU. A larger model would take 3-4x longer and produce a bigger index. For this scale, MiniLM gives a good accuracy-speed tradeoff."
+
+**Q: What's the caveat with your evaluation?**
+> "Our relevance labels were generated by asking Groq to judge the top results from our own pipeline. So the Hybrid+Reranker scores reflect system consistency rather than fully independent ground truth. A stronger evaluation would use human annotators or an existing benchmark like BEIR."
+
+**Q: Why Groq instead of OpenAI?**
+> "Groq provides free-tier access with very low latency — answers in 2-3 seconds. It runs Meta's Llama 3.3 70B on custom LPU hardware, which is significantly faster than standard GPU inference."
+
+**Q: Could this scale to all 2.97M arXiv papers?**
+> "Yes — FAISS scales linearly. 3M papers would be roughly a 4.5GB index, still manageable. The main bottleneck would be encoding time — about 3-4 hours on GPU."
